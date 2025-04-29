@@ -20,10 +20,19 @@ int integer1FromPC = DEFAULT_OUTPUT_VALUE;
 int integer2FromPC = DEFAULT_OUTPUT_VALUE;
 int integer3FromPC = DEFAULT_OUTPUT_VALUE;
 float floatFromPC = 0.0;
+
+bool signalMode = false;
+int long period_micros = 1000000;
+int sig_amplitude = 1600;
+int sig_offset = 2048;
+
 void recvWithStartEndMarkers();
 void parseData();
 void showParsedData();
 void sendDACCommands();
+float getPhase();
+float signalWave();
+void sendSignal();
 
 boolean newData = false;
 
@@ -63,6 +72,9 @@ void loop() {
         showParsedData();
         sendDACCommands();
         newData = false;
+    }
+    if (signalMode == true) {
+        sendSignal();
     }
 }
 
@@ -143,6 +155,7 @@ void sendDACCommands(){
     int mychar = int(messageFromPC[0]) ;
     switch(mychar) {
         case 's' :
+            signalMode = false;
             Serial.println("Setting values");
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, integer0FromPC);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, integer1FromPC);
@@ -150,6 +163,7 @@ void sendDACCommands(){
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, integer3FromPC);
             break;
         case 'c' :
+            signalMode = false;
             Serial.print("Clearing values to ");
             Serial.println(DEFAULT_OUTPUT_VALUE);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, DEFAULT_OUTPUT_VALUE);
@@ -157,8 +171,44 @@ void sendDACCommands(){
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, DEFAULT_OUTPUT_VALUE);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, DEFAULT_OUTPUT_VALUE);
             break;
+        case 'g':
+            signalMode = true;
+            period_micros = int(integer0FromPC * integer1FromPC);
+            sig_amplitude = int(integer2FromPC);
+            sig_offset = int(integer3FromPC);
+            Serial.println("Signal generator");
+            Serial.print("Period (microseconds = )");
+            Serial.println(period_micros);
+            Serial.print("Signal amplitude = ");
+            Serial.println(sig_amplitude);
+            Serial.print("Signal offset = ");
+            Serial.println(sig_offset);
         default:
             Serial.println("Message non recognized");
             break;
     }
+}
+
+float getPhase(){
+    unsigned long time = micros();
+    int relative = time % period_micros;
+    float phase = relative / period_micros;
+    Serial.println(phase);
+    return phase;
+}
+
+
+
+float signalWave(){
+    float value = sig_offset + sig_amplitude * sin(getPhase());
+    return int(round(value));
+}
+
+void sendSignal(){
+    float myval = signalWave();
+    // Serial.println(myval);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, myval);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, myval);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, myval);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, myval);
 }
