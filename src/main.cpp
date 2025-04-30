@@ -242,11 +242,12 @@ float signalWave(){
 
 float triangleWave(){
     unsigned long time = micros();
-    int relative = time % period_micros;
-    int halfperiod = period_micros / 2;
-    int intvalue = sig_offset + abs(relative % halfperiod - halfperiod);
-    // Serial.println(intvalue);
-    float value = float(intvalue) * float(sig_amplitude) / float(relative) ;
+    float relative = float(time % period_micros);
+    // int halfperiod = period_micros / 2;
+
+    float valrel = abs(relative/period_micros - 0.5) * 4.0 - 1.0;
+    // Serial.println(valrel, 2);
+    float value = sig_offset + valrel * float(sig_amplitude);
     return int(round(value));
 }
 
