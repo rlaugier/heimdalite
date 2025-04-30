@@ -4,6 +4,11 @@
 #include <Wire.h>
 
 #define DEFAULT_OUTPUT_VALUE 1024
+#define TWOPI 6.2832
+#define PI 3.1416
+#define VALUE 0
+#define SINE 1
+#define TRIANGLE 2
 
 // Adafruit_MCP4728 mcp_dac;
 
@@ -21,7 +26,7 @@ int integer2FromPC = DEFAULT_OUTPUT_VALUE;
 int integer3FromPC = DEFAULT_OUTPUT_VALUE;
 float floatFromPC = 0.0;
 
-bool signalMode = false;
+int signalMode = VALUE;
 int long period_micros = 1000000;
 int sig_amplitude = 1600;
 int sig_offset = 2048;
@@ -33,6 +38,7 @@ void sendDACCommands();
 float getPhase();
 float signalWave();
 void sendSignal();
+float triangleWave();
 
 boolean newData = false;
 
@@ -43,7 +49,9 @@ void setup() {
     while(!Serial);
     Serial.println("This demo expects 3 pieces of data - text, an integer and a floating point value");
     Serial.println("Enter data in this style [s,1024,2000,3000,4000] ");
-    Serial.println();
+    Serial.println("For a signal generator (sawtooth) [g,period1,period2,half-amp,offset] ");
+    Serial.println("e.g. [g,1000,1000,2000,2000]");
+    Serial.println("");
 
 // 
     // Try to initialize!
@@ -73,7 +81,10 @@ void loop() {
         sendDACCommands();
         newData = false;
     }
-    if (signalMode == true) {
+    if (signalMode == SINE) {
+        sendSignal();
+    }
+    else if (signalMode == TRIANGLE) {
         sendSignal();
     }
 }
@@ -153,38 +164,63 @@ void showParsedData() {
 
 void sendDACCommands(){
     int mychar = int(messageFromPC[0]) ;
+    Serial.println("==================");
+    Serial.flush();
     switch(mychar) {
         case 's' :
-            signalMode = false;
+            signalMode = VALUE;
             Serial.println("Setting values");
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, integer0FromPC);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, integer1FromPC);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, integer2FromPC);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, integer3FromPC);
+            Serial.flush();
             break;
         case 'c' :
-            signalMode = false;
+            signalMode = VALUE;
             Serial.print("Clearing values to ");
             Serial.println(DEFAULT_OUTPUT_VALUE);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, DEFAULT_OUTPUT_VALUE);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, DEFAULT_OUTPUT_VALUE);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, DEFAULT_OUTPUT_VALUE);
             // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, DEFAULT_OUTPUT_VALUE);
+            Serial.println(signalMode);
+            Serial.flush();
             break;
         case 'g':
-            signalMode = true;
+            signalMode = SINE;
             period_micros = int(integer0FromPC * integer1FromPC);
             sig_amplitude = int(integer2FromPC);
             sig_offset = int(integer3FromPC);
-            Serial.println("Signal generator");
+            Serial.println("Signal generator sinewave");
             Serial.print("Period (microseconds = )");
             Serial.println(period_micros);
             Serial.print("Signal amplitude = ");
             Serial.println(sig_amplitude);
             Serial.print("Signal offset = ");
             Serial.println(sig_offset);
+            Serial.println(signalMode);
+            Serial.flush();
+            break;
+        case 't':
+            signalMode = TRIANGLE;
+            period_micros = int(integer0FromPC * integer1FromPC);
+            sig_amplitude = int(integer2FromPC);
+            sig_offset = int(integer3FromPC);
+            Serial.println("Signal generator triangle");
+            Serial.print("Period (microseconds = )");
+            Serial.println(period_micros);
+            Serial.print("Signal amplitude = ");
+            Serial.println(sig_amplitude);
+            Serial.print("Signal offset = ");
+            Serial.println(sig_offset);
+            Serial.println(signalMode);
+            Serial.flush();
+            break;
         default:
             Serial.println("Message non recognized");
+            Serial.println(signalMode);
+            Serial.flush();
             break;
     }
 }
@@ -192,8 +228,8 @@ void sendDACCommands(){
 float getPhase(){
     unsigned long time = micros();
     int relative = time % period_micros;
-    float phase = relative / period_micros;
-    Serial.println(phase);
+    float phase = TWOPI * float(relative) / float(period_micros);
+    // Serial.println(phase,3);
     return phase;
 }
 
@@ -204,8 +240,24 @@ float signalWave(){
     return int(round(value));
 }
 
+float triangleWave(){
+    unsigned long time = micros();
+    int relative = time % period_micros;
+    int halfperiod = period_micros / 2;
+    int intvalue = sig_offset + abs(relative % halfperiod - halfperiod);
+    // Serial.println(intvalue);
+    float value = float(intvalue) * float(sig_amplitude) / float(relative) ;
+    return int(round(value));
+}
+
 void sendSignal(){
-    float myval = signalWave();
+    int myval = 0;
+    if (signalMode == SINE) {
+        myval = signalWave();
+    }
+    else if (signalMode == TRIANGLE) {
+        myval = triangleWave();
+    }
     // Serial.println(myval);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, myval);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, myval);
