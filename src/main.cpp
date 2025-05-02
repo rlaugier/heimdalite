@@ -51,7 +51,6 @@ boolean newData = false;
 void setup() {
     Serial.begin(9600);
     while(!Serial);
-    Serial.println("This demo expects 3 pieces of data - text, an integer and a floating point value");
     Serial.println("Enter data in this style [s,1024,2000,3000,4000] ");
     Serial.println("For a signal generator (sawtooth) [g,period1,period2,half-amp,offset] ");
     Serial.println("e.g. [g,1000,1000,2000,2000]");
@@ -59,24 +58,20 @@ void setup() {
 
 
     // Try to initialize!
-    int mcp_status = mcp_dac.begin(0x64);
-    Serial.println(mcp_status);
-    if (!mcp_status) {
-        Serial.println("Failed to find MCP4728 chip");
-        while (1) {
-        delay(10);
-        }
-    }
+    // int mcp_status = mcp_dac.begin(0x64);
+    // Serial.println(mcp_status);
+    // if (!mcp_status) {
+    //     Serial.println("Failed to find MCP4728 chip");
+    //     while (1) {
+    //     delay(10);
+    //     }
+    // }
 
-    mcp_dac.setChannelValue(MCP4728_CHANNEL_A, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-    mcp_dac.setChannelValue(MCP4728_CHANNEL_B, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-    mcp_dac.setChannelValue(MCP4728_CHANNEL_C, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-    mcp_dac.setChannelValue(MCP4728_CHANNEL_D, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, 2048, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
 
-    // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, 4095);
-    // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, 2048);
-    // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, 1024);
-    // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, 0);
 
     // Testing LEDs
     pinMode(RED_LED_PIN, OUTPUT);
@@ -195,10 +190,10 @@ void sendDACCommands(){
         case 's' :
             signalMode = VALUE;
             Serial.println("Setting values");
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_A, integer0FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_B, integer1FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_C, integer2FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_D, integer3FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, integer0FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, integer1FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, integer2FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, integer3FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
             Serial.println(0);
 
             if (verbose == true) {
@@ -211,10 +206,10 @@ void sendDACCommands(){
             signalMode = VALUE;
             Serial.print("Clearing values to ");
             Serial.println(DEFAULT_OUTPUT_VALUE);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_A, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_B, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_C, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            mcp_dac.setChannelValue(MCP4728_CHANNEL_D, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
             Serial.println(0);
 
             if (verbose == true) {
@@ -334,7 +329,7 @@ void sendSignal(){
     Serial.print("  ");
     Serial.println(myval);
     // mcp_dac.fastWrite(myval, myval, myval, myval);
-    mcp_dac.setChannelValue(MCP4728_CHANNEL_A, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    // mcp_dac.setChannelValue(MCP4728_CHANNEL_A, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
