@@ -9,6 +9,9 @@
 #define VALUE 0
 #define SINE 1
 #define TRIANGLE 2
+#define RED_LED_PIN 11
+#define YELLOW_LED_PIN 5
+#define SWITCH_PIN 7
 
 Adafruit_MCP4728 mcp_dac;
 
@@ -30,6 +33,7 @@ int signalMode = VALUE;
 long period_ms = 1000;
 int sig_amplitude = 1600;
 int sig_offset = 2048;
+bool verbose = true;
 
 void recvWithStartEndMarkers();
 void parseData();
@@ -73,6 +77,20 @@ void setup() {
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, 2048);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, 1024);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, 0);
+
+    // Testing LEDs
+    pinMode(RED_LED_PIN, OUTPUT);
+    pinMode(YELLOW_LED_PIN, OUTPUT);
+    digitalWrite(RED_LED_PIN,HIGH);
+    delay(500);
+    digitalWrite(RED_LED_PIN,LOW);
+    digitalWrite(YELLOW_LED_PIN,HIGH);
+    delay(5);
+    digitalWrite(YELLOW_LED_PIN,LOW);
+
+    pinMode(SWITCH_PIN, INPUT);
+
+
 }
 
 //============
@@ -181,18 +199,29 @@ void sendDACCommands(){
             mcp_dac.setChannelValue(MCP4728_CHANNEL_B, integer1FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
             mcp_dac.setChannelValue(MCP4728_CHANNEL_C, integer2FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
             mcp_dac.setChannelValue(MCP4728_CHANNEL_D, integer3FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            Serial.flush();
+            Serial.println(0);
+
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(50);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
             break;
         case 'c' :
             signalMode = VALUE;
             Serial.print("Clearing values to ");
             Serial.println(DEFAULT_OUTPUT_VALUE);
-        mcp_dac.setChannelValue(MCP4728_CHANNEL_A, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-        mcp_dac.setChannelValue(MCP4728_CHANNEL_B, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-        mcp_dac.setChannelValue(MCP4728_CHANNEL_C, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-        mcp_dac.setChannelValue(MCP4728_CHANNEL_D, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
-            Serial.println(signalMode);
-            Serial.flush();
+            mcp_dac.setChannelValue(MCP4728_CHANNEL_A, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            mcp_dac.setChannelValue(MCP4728_CHANNEL_B, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            mcp_dac.setChannelValue(MCP4728_CHANNEL_C, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            mcp_dac.setChannelValue(MCP4728_CHANNEL_D, DEFAULT_OUTPUT_VALUE, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+            Serial.println(0);
+
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(100);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
             break;
         case 'g':
             signalMode = SINE;
@@ -206,8 +235,12 @@ void sendDACCommands(){
             Serial.println(sig_amplitude);
             Serial.print("Signal offset = ");
             Serial.println(sig_offset);
-            Serial.println(signalMode);
-            Serial.flush();
+            Serial.println(0);
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(100);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
             break;
         case 't':
             signalMode = TRIANGLE;
@@ -221,13 +254,44 @@ void sendDACCommands(){
             Serial.println(sig_amplitude);
             Serial.print("Signal offset = ");
             Serial.println(sig_offset);
-            Serial.println(signalMode);
-            Serial.flush();
+            Serial.println(0);
+
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(100);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
+            break;
+        case 'v':
+            if (integer0FromPC == 0) {
+                verbose = false;
+            }
+            else 
+            {
+                verbose = true;
+            }
+
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(10);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
+            else {
+                digitalWrite(RED_LED_PIN, HIGH);
+                delay(10);
+                digitalWrite(RED_LED_PIN, LOW);
+            }
             break;
         default:
             Serial.println("Message non recognized");
             Serial.println(signalMode);
-            Serial.flush();
+            Serial.println(1);
+
+            if (verbose == true) {
+                digitalWrite(RED_LED_PIN, HIGH);
+                delay(500);
+                digitalWrite(RED_LED_PIN, LOW);
+            }
             break;
     }
 }
