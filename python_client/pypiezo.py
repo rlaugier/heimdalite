@@ -29,9 +29,12 @@ class piezointerface(object):
             self.offsets = offsets
         self.gains = gains
         self.raw_values = self.values2raw(self.values)
+
     def __del__(self):
+        print("Reseting server")
+        self.reset_server()
         print("Closing the interface")
-        print(res.close())
+        self.res.close()
         print("done")
         
     def get_raw_values(self):
@@ -47,8 +50,11 @@ class piezointerface(object):
 
     def send_current(self,):
         bytearray = self.vals2bytes("s", self.raw_values)
-        self.ser.write()
+        self.ser.write(bytearray)
         pass
+
+    def reset_server(self,):
+        self.ser.write(b"[z,0]")
     
     def _send(self):
         myrawvalues = self.raw_values

@@ -2,6 +2,7 @@
 
 #include <Adafruit_MCP4728.h>
 #include <Wire.h>
+#include <avr/wdt.h>
 
 #define DEFAULT_OUTPUT_VALUE 1024
 #define TWOPI 6.2832
@@ -102,7 +103,9 @@ void loop() {
             // this temporary copy is necessary to protect the original data
             //   because strtok() used in parseData() replaces the commas with \0
         parseData();
-        showParsedData();
+        if (verbose == true) {
+            showParsedData();
+        }
         sendDACCommands();
         newData = false;
     }
@@ -281,6 +284,12 @@ void sendDACCommands(){
                 delay(10);
                 digitalWrite(RED_LED_PIN, LOW);
             }
+            break;
+        case 'z':
+            Serial.println("Going into reset");
+            Serial.flush();
+            wdt_enable(WDTO_30MS);
+            while (true) {}
             break;
         default:
             Serial.println("Message non recognized");
