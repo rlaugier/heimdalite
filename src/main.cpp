@@ -50,7 +50,7 @@ boolean newData = false;
 //============
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(57600);
     while(!Serial);
     Serial.println("This demo expects 3 pieces of data - text, an integer and a floating point value");
     Serial.println("Enter data in this style [s,1024,2000,3000,4000] ");
@@ -192,12 +192,9 @@ void showParsedData() {
 
 void sendDACCommands(){
     int mychar = int(messageFromPC[0]) ;
-    Serial.println("==================");
-    Serial.flush();
     switch(mychar) {
         case 's' :
             signalMode = VALUE;
-            Serial.println("Setting values");
             mcp_dac.setChannelValue(MCP4728_CHANNEL_A, integer0FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
             mcp_dac.setChannelValue(MCP4728_CHANNEL_B, integer1FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
             mcp_dac.setChannelValue(MCP4728_CHANNEL_C, integer2FromPC, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);

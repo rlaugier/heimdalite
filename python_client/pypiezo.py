@@ -75,7 +75,7 @@ class piezointerface(object):
         return np.clip(values, self.value_min, self.value_max)
         
     def sanitize_raws(self, raws):
-        newraws = np.clip(raws, 0, 4096)
+        newraws = np.clip(raws, 0, 4000)
         return newraws
         
     def vals2bytes(self, mystring, myarray):
