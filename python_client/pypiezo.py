@@ -20,7 +20,11 @@ class piezointerface(object):
     def __init__(self, n=4, gains=gains, offsets=None,
                  port_params=port_params,):
         print("Opening the interface")
-        self.ser = serial.Serial(**port_params)
+        try :
+            self.ser = serial.Serial(**port_params)
+        except :
+            self.ser = None
+            print("Could not open the serial port")
         self.value_min = -9.5/2
         self.value_max = 9.5/2
         self.n = n
