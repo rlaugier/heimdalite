@@ -13,6 +13,8 @@ y_filter = np.array([0.0017543387818981376, 0.004561388410207326, 0.014385942578
 mean_wl = np.sum(x_filter*y_filter) / np.sum(y_filter)
 
 
+
+
 class HumInt(object):
     def __init__(self, lam_mean=mean_wl,
                 pad=0.15, interf=None,
@@ -30,17 +32,29 @@ class HumInt(object):
         self.ts = db_server
         self.rois = [f"roi{n}_sum" for n in rois_interest]
         self.dark = None
-    
-    def move_and_sample(self, position):
+        self.bg_noise = None
+
+    def find_dark(self, frac=0.25, dt=0.5, gain=0.1):
+        current_pos = self.get_position()
+        a = self.move_and_sample(current_pos + frac*self.lam_mean, dt=dt)
+        b = self.move_and_sample(current_pos - frac*self.lam_mean, dt=dt)
+        offset = (a - b)*gain
+        self.move(current_pos + offset)
+
+    def move_and_sample(self, position, dt=None):
         self.move(position)
         sleep(self.pad)
-        res = self.sample()
+        if dt is None:
+            res = self.sample_cal()
+        else:
+            res = self.sample_long_cal(dt)
         return res
 
     def get_dark(self, dt):
         print("Taking darks")
         measurement = self.sample_long(dt=dt)
         self.dark = measurement.mean(axis=0)
+        self.bg_noise = measurement.std(axis=0)/np.sqrt(measurement.shape[0])
         print("You can remove the shutters")
 
     def sample(self):
@@ -54,8 +68,7 @@ class HumInt(object):
         start = np.round(time()*1000)
         sleep(dt)
         end = np.round(time()*1000)
-        
-        mes = np.array([self.ts.ts.range(akey,start, end) for akey in self.rois])
+        mes = np.array([self.ts.ts.range(akey, start, end) for akey in self.rois])
         return mes.T
 
     def sample_long_cal(self, dt):
