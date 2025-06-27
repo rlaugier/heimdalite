@@ -11,7 +11,7 @@ import numpy as np
 import serial
 import threading
 import time
-gain = 4000.0/9.5e-6
+gain = 4000.0/9.5 # ADU / microns
 gains = gain*np.ones(4)
 port_params = {"port":"/dev/ttyACM0", "baudrate":57600,
                      "bytesize":serial.EIGHTBITS, "parity":"N",
@@ -25,8 +25,8 @@ class piezointerface(object):
         except :
             self.ser = None
             print("Could not open the serial port")
-        self.value_min = -9.5/2
-        self.value_max = 9.5/2
+        self.value_min = 0
+        self.value_max = 9.5
         self.n = n
         self.values = np.zeros(self.n)
         if offsets is None:
@@ -59,11 +59,11 @@ class piezointerface(object):
     def get_raw_values(self):
         return self.raw_values
         
-    def values2raw(self,values):
+    def values2raw(self, values):
         raw = ((values + self.offsets) * self.gains).astype(int)
         return self.sanitize_raws(raw)
         
-    def raw2values(self,raws):
+    def raw2values(self, raws):
         values = raws/self.gains - self.offsets
         return self.sanitize_values(values)
 
@@ -90,10 +90,10 @@ class piezointerface(object):
             if any_values.dtype == int:
                 self.raw_values = any_values
                 self.values = self.raw2values(self.raw_values)
-            elif any_values.dtype == float or any_values.dtype == np.float64:
+            elif (any_values.dtype == float) or (any_values.dtype == np.float64):
                 thevalues = any_values
                 self.values = thevalues
-                self.raw_values = self.raw2values(self.values)
+                self.raw_values = self.values2raw(self.values)
         self._send()
         
     def sanitize_values(self, values):

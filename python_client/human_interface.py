@@ -19,7 +19,7 @@ class HumInt(object):
     def __init__(self, lam_mean=mean_wl,
                 pad=0.15, interf=None,
                 act_index=0,
-                rois_interest=[3,4],
+                rois_interest=np.arange(1,10),
                 verbose=False,
                 db_server=None):
         # self.lamb_min = lam_range[0]
@@ -59,17 +59,17 @@ class HumInt(object):
 
     def sample(self):
         mes = np.array([self.ts.ts.get(akey) for akey in self.rois])
-        return mes
+        return mes.T[1]
 
     def sample_cal(self):
         return self.sample() - self.dark
 
     def sample_long(self, dt=1.0):
-        start = np.round(time()*1000)
+        start = int(np.round(time()*1000).astype(int))
         sleep(dt)
-        end = np.round(time()*1000)
+        end = int(np.round(time()*1000).astype(int))
         mes = np.array([self.ts.ts.range(akey, start, end) for akey in self.rois])
-        return mes.T
+        return mes.T[1]
 
     def sample_long_cal(self, dt):
         return self.sample_long(dt=dt) - self.dark
@@ -81,7 +81,7 @@ class HumInt(object):
         self.interf.send(any_values=values)
         
     def get_position(self):
-        pos = self.interf.values[self.act_index]
+        pos = self.interf.values
         return pos
 
     def do_scan(self, start=-3.0, end=3.0, nsteps=1000):
@@ -93,27 +93,28 @@ class HumInt(object):
             results.append(ares)
         results = np.array(results)
         print("Scan ended")
-        return results
+        return steps, results
         
     def relative_move(self, motion):
         thepos = self.get_position()
         thepos[self.act_index] += motion 
-        self.interf.send(any_vaues=thepos)
+        self.interf.send(any_values=thepos)
         
 
-    def evaluate_lag(self, n=10, lag_min=0.05, lag_max=0.15, amplitude=0.5):
-        start_pos = self.get_position()
+    def evaluate_lag(self, n=10, lag_min=0.05, lag_max=0.15, amplitude=0.5, roi_index=3):
+        start_pos = self.get_position()[self.act_index]
         lags = np.linspace(lag_min,lag_max, n)
         signal_amplitudes = []
         signal_stds = []
-        for i, alag in enumerate(range(lags)):
+        for i, alag in enumerate(lags):
             measurements = []
-            for i in range(3):
+            for i in range(8):
                 self.move(start_pos + amplitude)
                 sleep(alag)
-                val1 = self.sample()
+                val1 = self.sample()[roi_index]
                 self.move(start_pos)
-                val2 = self.sample()
+                sleep(alag)
+                val2 = self.sample()[roi_index]
                 measurements.append(val1 - val2)
             measurements = np.array(measurements)
             signal_amplitudes.append(measurements.mean())
