@@ -34,20 +34,57 @@ class HumInt(object):
         self.dark = None
         self.bg_noise = None
 
-    def find_dark(self, frac=0.25, dt=0.5, gain=0.1):
+    def find_dark(self, frac=0.25, dt=0.5, gain=0.1,
+                 roi_index=3, verbose=True,
+                 amp=800.0):
         current_pos = self.get_position()
-        a = self.move_and_sample(current_pos + frac*self.lam_mean, dt=dt)
-        b = self.move_and_sample(current_pos - frac*self.lam_mean, dt=dt)
-        offset = (a - b)*gain
-        self.move(current_pos + offset)
+        pos_a = current_pos[self.act_index] + 1e6 * frac*self.lam_mean
+        pos_b = current_pos[self.act_index] - 1e6 * frac*self.lam_mean
+        if verbose:
+            print(f"Trying {pos_a:.3f} and {pos_b:.3f}")
+        a = self.move_and_sample(pos_a, dt=dt, move_back=False)
+        b = self.move_and_sample(pos_b, dt=dt, move_back=False)
+        # self.move(current_pos[self.act_index])
+        a_val = a[:,roi_index].mean(axis=0)
+        a_std = a[:,roi_index].std(axis=0)
+        b_val = b[:,roi_index].mean(axis=0)
+        b_std = b[:,roi_index].std(axis=0)
+        raw_offset = a_val - b_val
+        p = self.deltaval2p(raw_offset, frac, amp=amp)
+        # offset = (raw_offset) * gain
+        offset = (p ) * gain
+        newpos = current_pos[self.act_index] + offset
+        if verbose:
+            print(f"a = {a_val:.1f} pm{a_std:.1f},   b = {b_val:.1f} pm{b_std:.1f}")
+            print(f"Raw offset : {raw_offset:.3f},  p = {p:.3f}")
+            print(f"Moving to {newpos:.3f}")
+            import matplotlib.pyplot as plt
+            # plt.figure(dpi=70)
+            # plt.plot(a[:,roi_index], label="a")
+            # plt.plot(b[:,roi_index], label="b")
+            # plt.legend(fontsize=6)
+            # plt.show()
+        self.move(newpos)
 
-    def move_and_sample(self, position, dt=None):
+    def deltaval2p(self, deltaval, frac, amp=800.):
+        lam_micron = 1.0e6 * self.lam_mean
+        deltap = lam_micron * frac
+        inner = -deltaval / (amp * 2 * np.sin(2*np.pi/lam_micron * deltap))
+        p = lam_micron /(2*np.pi) * np.arcsin(inner)
+        return p
+
+    def move_and_sample(self, position, dt=None, move_back=True):
+        orig_pos = self.get_position()
         self.move(position)
         sleep(self.pad)
         if dt is None:
             res = self.sample_cal()
         else:
             res = self.sample_long_cal(dt)
+        if move_back:
+            print(f"moving_back to {orig_pos[self.act_index]}")
+            self.move(orig_pos[self.act_index])
+            sleep(self.pad)
         return res
 
     def get_dark(self, dt):
@@ -63,11 +100,15 @@ class HumInt(object):
 
     def sample_cal(self):
         return self.sample() - self.dark
-
+    def db_time(self):
+        aresp = self.ts.ts.get(self.rois[0])
+        return aresp[0]
     def sample_long(self, dt=1.0):
-        start = int(np.round(time()*1000).astype(int))
+        # start = int(np.round(time()*1000).astype(int))
+        start = self.db_time()
         sleep(dt)
-        end = int(np.round(time()*1000).astype(int))
+        # end = int(np.round(time()*1000).astype(int))
+        end = self.db_time()
         mes = np.array([self.ts.ts.range(akey, start, end) for akey in self.rois])
         return mes.T[1]
 
@@ -75,21 +116,21 @@ class HumInt(object):
         return self.sample_long(dt=dt) - self.dark
 
     def move(self, position ):
-        print(f"moving to {position:.3e}")
+        # print(f"moving to {position:.3e}")
         values = self.interf.values
         values[self.act_index] = position
         self.interf.send(any_values=values)
         
     def get_position(self):
-        pos = self.interf.values
+        pos = self.interf.values.copy()
         return pos
 
     def do_scan(self, start=-3.0, end=3.0, nsteps=1000):
         steps = np.linspace(start, end, nsteps)
         print("Starting a scan")
         results = []
-        for n, astep in tqdm(enumerate(steps)):
-            ares = self.move_and_sample(astep)
+        for n, astep in enumerate(tqdm(steps)):
+            ares = self.move_and_sample(astep, move_back=False)
             results.append(ares)
         results = np.array(results)
         print("Scan ended")
