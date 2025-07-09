@@ -3,8 +3,12 @@ import matplotlib.pyplot as plt
 from time import sleep, time
 from tqdm import tqdm
 
+
 import sys
 sys.path.append("/home/labo/src/NOTTControl/")
+sys.path.append("/home/labo/src/NOTTControl/script/lib/")
+from nott_control import shutter_close, shutter_open
+
 
 dburl = "redis://nott-server.ster.kuleuven.be:6379"
 
@@ -168,3 +172,36 @@ class HumInt(object):
         plt.xlabel("Lag [s]")
         plt.ylabel("Amplitude of light variation")
         plt.show()
+
+    def chip_calib(self, amp, steps=10, dt=0.5):
+        import dnull as dn
+        import jax.numpy as jp
+        ntel = 4
+        full_hadamard = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps)
+        shutter_probe = dn.dnull.shutter_probe(ntel)
+        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs * full_hadamard)
+        probe_series = jp.concatenate((shutter_probe, hadamard_phasor), axis=0)
+
+        print("shutter_calibration")
+        print("Assuming all start open")
+        measurements = []
+        beam_state = np.zeros(ntel, dtype=bool)
+        for aprobe in shutter_probe.astype(bool):
+            for i, (astate, target_state) in range(ntel):
+                beam_id = i+1
+                if astate is not target_state:
+                    if target_state:
+                        print(f"Opening {beam_id}")
+                        shutter_open(beam_id)
+                    else:
+                        print(f"Closing {beam_id}")
+                        shutter_close(beam_id)
+            measurements.append(self.sample_long(dt=dt))
+
+        for aprobe in full_hadamard:
+            # Move_and_sample
+            # append
+            pass
+        return jp.array(measurements)
+    
+        pass
