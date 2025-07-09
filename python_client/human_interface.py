@@ -179,23 +179,28 @@ class HumInt(object):
         ntel = 4
         full_hadamard = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps)
         shutter_probe = dn.dnull.shutter_probe(ntel)
-        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs * full_hadamard)
-        probe_series = jp.concatenate((shutter_probe, hadamard_phasor), axis=0)
+        shutter_phasor = jp.ones_like(self.lambs)[None,:,None] * shutter_probe[:,None,:]
+        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * full_hadamard[:,None,:])
+        probe_series = jp.concatenate((shutter_phasor, hadamard_phasor), axis=0)
 
         print("shutter_calibration")
         print("Assuming all start open")
         measurements = []
         beam_state = np.zeros(ntel, dtype=bool)
         for aprobe in shutter_probe.astype(bool):
-            for i, (astate, target_state) in range(ntel):
+            print(aprobe, beam_state)
+            for i, (astate, target_state) in enumerate(zip(beam_state, aprobe)):
                 beam_id = i+1
                 if astate is not target_state:
                     if target_state:
                         print(f"Opening {beam_id}")
                         shutter_open(beam_id)
+                        astate = True
                     else:
                         print(f"Closing {beam_id}")
                         shutter_close(beam_id)
+                        astate = False
+            print(beam_state)
             measurements.append(self.sample_long(dt=dt))
 
         for aprobe in full_hadamard:
