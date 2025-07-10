@@ -32,7 +32,7 @@ def shutter_close(shutter_id):
 
     opcua_conn = OPCUAConnection(url)
     opcua_conn.connect()
-    shutter = Shutter(opcua_conn, 'ns=4;s=MAIN.nott_ics.Shutters.NSH'+shutter_id, 'Shutter '+shutter_id)
+    shutter = Shutter(opcua_conn, f"ns=4;s=MAIN.nott_ics.Shutters.NSH{shutter_id}Shutter {shutter_id}")
     shutter.close()
 
     # Disconnect
@@ -49,7 +49,7 @@ def shutter_open(shutter_id):
 
     opcua_conn = OPCUAConnection(url)
     opcua_conn.connect()
-    shutter = Shutter(opcua_conn, 'ns=4;s=MAIN.nott_ics.Shutters.NSH'+shutter_id, 'Shutter '+shutter_id)
+    shutter = Shutter(opcua_conn, f"ns=4;s=MAIN.nott_ics.Shutters.NSH{shutter_id}Shutter {shutter_id}")
     shutter.open()
     
     # Disconnect
@@ -254,3 +254,4 @@ class HumInt(object):
         return jp.array(measurements)
     
         pass
+
