@@ -22,6 +22,12 @@ from opcua import OPCUAConnection
 from nott_control import Shutter
 from configparser import ConfigParser
 
+config = ConfigParser()
+config.read("NOTTControl/config.ini")
+opcuad = config["DEFAULT"]["opcuaaddress"]
+
+opcua_conn = OPCUAConnection(opcuad)
+
 def shutter_close(shutter_id):
     """ Function to close a shutter """
 
@@ -50,6 +56,7 @@ def shutter_open(shutter_id):
     opcua_conn = OPCUAConnection(url)
     opcua_conn.connect()
     shutter = Shutter(opcua_conn, f"ns=4;s=MAIN.nott_ics.Shutters.NSH{shutter_id}Shutter {shutter_id}")
+    shutter = Shutter(opcua_conn, f"ns=4;s=MAIN.nott_ics.Shutters.NSH{shutter_id}Shutter {shutter_id}")
     shutter.open()
     
     # Disconnect
@@ -75,6 +82,12 @@ class HumInt(object):
         self.dark = None
         self.bg_noise = None
         self.non_motorized = 3 # Index of the non-mororized beam
+        self.shutters = [
+            Shutter(opcua_conn,
+                f"ns=4;s=MAIN.nott_ics.Shutters.NSH{shutterid+1}",
+                f"Shutter {shutterid+1}")\
+                    for shutterid in range(4)
+        ]
 
     def find_dark(self, frac=0.25, dt=0.5, gain=0.1,
                  roi_index=3, verbose=True,
@@ -234,15 +247,15 @@ class HumInt(object):
         for aprobe in shutter_probe.astype(bool):
             print(aprobe, beam_state)
             for i, (astate, target_state) in enumerate(zip(beam_state, aprobe)):
-                beam_id = i+1
+                beam_id = i
                 if astate is not target_state:
                     if target_state:
                         print(f"Opening {beam_id}")
-                        shutter_open(beam_id)
+                        self.shutters[beam_id].open()
                         astate = True
                     else:
                         print(f"Closing {beam_id}")
-                        shutter_close(beam_id)
+                        self.shutters[beam_id].close()
                         astate = False
             print(beam_state)
             measurements.append(self.sample_long(dt=dt))
