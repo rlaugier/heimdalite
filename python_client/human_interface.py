@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from time import sleep, time
 from tqdm import tqdm
+from copy import copy
 
 
 import sys
@@ -123,8 +124,8 @@ class HumInt(object):
         else:
             res = self.sample_long_cal(dt)
         if move_back:
-            print(f"moving_back to {orig_pos[self.act_index]}")
-            self.move(orig_pos[self.act_index])
+            print(f"moving_back to {orig_pos}")
+            self.move(orig_pos)
             sleep(self.pad)
         return res
 
@@ -163,8 +164,7 @@ class HumInt(object):
 
     def move(self, position ):
         # print(f"moving to {position:.3e}")
-        values = self.interf.values
-        values[self.act_index] = position
+        values = position
         self.interf.send(any_values=values)
         
     def get_position(self):
@@ -188,15 +188,17 @@ class HumInt(object):
         self.interf.send(any_values=thepos)
         
 
-    def evaluate_lag(self, n=10, lag_min=0.05, lag_max=0.15, amplitude=0.5, roi_index=3):
-        start_pos = self.get_position()[self.act_index]
+    def evaluate_lag(self, act_index, n=10, lag_min=0.05, lag_max=0.15, amplitude=0.5, roi_index=3):
+        start_pos = self.get_position()
         lags = np.linspace(lag_min,lag_max, n)
         signal_amplitudes = []
         signal_stds = []
         for i, alag in enumerate(lags):
             measurements = []
             for i in range(8):
-                self.move(start_pos + amplitude)
+                newpos = copy(start_pos)
+                newpos[act_index] += amplitude
+                self.move(newpos)
                 sleep(alag)
                 val1 = self.sample()[roi_index]
                 self.move(start_pos)
