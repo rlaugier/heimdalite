@@ -26,7 +26,6 @@ config = ConfigParser()
 config.read("NOTTControl/config.ini")
 opcuad = config["DEFAULT"]["opcuaaddress"]
 
-opcua_conn = OPCUAConnection(opcuad)
 
 def shutter_close(shutter_id):
     """ Function to close a shutter """
@@ -69,7 +68,8 @@ class HumInt(object):
                 act_index=0,
                 rois_interest=np.arange(1,10),
                 verbose=False,
-                db_server=None):
+                db_server=None,
+                opcuad=opcuad):
         # self.lamb_min = lam_range[0]
         # self.lamb_max = lam_range[-1]
         self.lam_mean = lam_mean
@@ -82,12 +82,16 @@ class HumInt(object):
         self.dark = None
         self.bg_noise = None
         self.non_motorized = 3 # Index of the non-mororized beam
+        self.opcua_conn = OPCUAConnection(opcuad)
+        self.opcua_conn.connect()
         self.shutters = [
-            Shutter(opcua_conn,
+            Shutter(self.opcua_conn,
                 f"ns=4;s=MAIN.nott_ics.Shutters.NSH{shutterid+1}",
                 f"Shutter {shutterid+1}")\
                     for shutterid in range(4)
         ]
+    def __del__(self):
+        self.opcua_conn.disconnect()
 
     def find_dark(self, frac=0.25, dt=0.5, gain=0.1,
                  roi_index=3, verbose=True,
