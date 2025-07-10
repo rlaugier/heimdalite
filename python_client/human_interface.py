@@ -7,6 +7,7 @@ from tqdm import tqdm
 import sys
 sys.path.append("/home/labo/src/NOTTControl/")
 sys.path.append("/home/labo/src/NOTTControl/script/lib/")
+
 from nott_control import shutter_close, shutter_open
 
 
@@ -16,8 +17,43 @@ x_filter = np.array([0.000003332231310433949, 0.000003359090941083894, 0.0000033
 y_filter = np.array([0.0017543387818981376, 0.004561388410207326, 0.014385942578987246, 0.036842100544856524, 0.2277192639592904, 0.45789470381399533, 0.6599999760939395, 0.7863157750042266, 0.8508771992735247, 0.8705263076110844, 0.9028070197457336, 0.89017544583122, 0.8873684260854863, 0.9056140394914672, 0.9014035098728668, 0.8410526451047448, 0.8410526451047448, 0.8621052782564592, 0.916842103533114, 0.9210526331517145, 0.8957894703813994, 0.8957894703813994, 0.9028070197457336, 0.8803508916624401, 0.7975438539871611, 0.4761403471025518, 0.2726315201258773, 0.07473679240582154, 0.028420951659928514, 0.005964793694059473, 0.0017543387818981376])
 mean_wl = np.sum(x_filter*y_filter) / np.sum(y_filter)
 
+from opcua import OPCUAConnection
+from nott_control import Shutter
+from configparser import ConfigParser
 
+def shutter_close(shutter_id):
+    """ Function to close a shutter """
 
+    # initialize the OPC UA connection
+    config = ConfigParser()
+    config.read('/home/labo/src/NOTTControl/config.ini')
+    url =  config['DEFAULT']['opcuaaddress']
+
+    opcua_conn = OPCUAConnection(url)
+    opcua_conn.connect()
+    shutter = Shutter(opcua_conn, 'ns=4;s=MAIN.nott_ics.Shutters.NSH'+shutter_id, 'Shutter '+shutter_id)
+    shutter.close()
+
+    # Disconnect
+    opcua_conn.disconnect()
+    return 'done'
+
+def shutter_open(shutter_id):
+    """ Function to open a shutter """
+
+    # initialize the OPC UA connection
+    config = ConfigParser()
+    config.read('/home/labo/src/NOTTControl/config.ini')
+    url =  config['DEFAULT']['opcuaaddress']
+
+    opcua_conn = OPCUAConnection(url)
+    opcua_conn.connect()
+    shutter = Shutter(opcua_conn, 'ns=4;s=MAIN.nott_ics.Shutters.NSH'+shutter_id, 'Shutter '+shutter_id)
+    shutter.open()
+    
+    # Disconnect
+    opcua_conn.disconnect()
+    return 'done'
 
 class HumInt(object):
     def __init__(self, lam_mean=mean_wl,
@@ -37,6 +73,7 @@ class HumInt(object):
         self.rois = [f"roi{n}_sum" for n in rois_interest]
         self.dark = None
         self.bg_noise = None
+        self.non_motorized = 3 # Index of the non-mororized beam
 
     def find_dark(self, frac=0.25, dt=0.5, gain=0.1,
                  roi_index=3, verbose=True,
@@ -104,9 +141,11 @@ class HumInt(object):
 
     def sample_cal(self):
         return self.sample() - self.dark
+
     def db_time(self):
         aresp = self.ts.ts.get(self.rois[0])
         return aresp[0]
+
     def sample_long(self, dt=1.0):
         # start = int(np.round(time()*1000).astype(int))
         start = self.db_time()
@@ -118,6 +157,9 @@ class HumInt(object):
 
     def sample_long_cal(self, dt):
         return self.sample_long(dt=dt) - self.dark
+
+    def four2three(self, position):
+        return position - position[self.non_motorized]
 
     def move(self, position ):
         # print(f"moving to {position:.3e}")
@@ -196,7 +238,7 @@ class HumInt(object):
                     else:
                         print(f"Closing {beam_id}")
                         shutter_close(beam_id)
-            measurements.append(self.sample_long(dt=dt))
+            measurements.append(self.sample_long_cal(dt=dt))
 
         for aprobe in full_hadamard:
             # Move_and_sample
