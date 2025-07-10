@@ -247,28 +247,31 @@ class HumInt(object):
         print("shutter_calibration")
         print("Assuming all start open")
         measurements = []
-        beam_state = np.zeros(ntel, dtype=bool)
+        beam_state = np.ones(ntel, dtype=bool)
         for aprobe in shutter_probe.astype(bool):
-            print(aprobe, beam_state)
+            print("aprobe:", aprobe, "beam_state", beam_state)
             for i, (astate, target_state) in enumerate(zip(beam_state, aprobe)):
                 beam_id = i
-                if astate is not target_state:
+                # print(astate, target_state)
+                if astate != target_state:
+                    # print("Changing")
                     if target_state:
                         print(f"Opening {beam_id}")
                         self.shutters[beam_id].open()
-                        astate = True
+                        beam_state[i] = True
                     else:
                         print(f"Closing {beam_id}")
                         self.shutters[beam_id].close()
-                        astate = False
+                        beam_state[i] = False
             print(beam_state)
-            measurements.append(self.sample_long(dt=dt))
+            sleep(self.pad)
+            measurements.append(self.sample_long_cal(dt=dt))
+        for ashutter in self.shutters:
+            ashutter.open()
 
         for aprobe in full_hadamard:
             # Move_and_sample
             # append
             pass
-        return jp.array(measurements)
-    
-        pass
+        return measurements
 
