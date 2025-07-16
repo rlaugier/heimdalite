@@ -23,7 +23,7 @@ from nott_control import Shutter
 from configparser import ConfigParser
 
 config = ConfigParser()
-config.read("NOTTControl/config.ini")
+config.read("/home/labo/src/NOTTControl/config.ini")
 opcuad = config["DEFAULT"]["opcuaaddress"]
 
 
