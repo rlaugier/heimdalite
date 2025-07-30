@@ -10,6 +10,8 @@
 #define VALUE 0
 #define SINE 1
 #define TRIANGLE 2
+#define TRIANGLE2 3
+#define TRIANGLE3 4
 #define RED_LED_PIN 11
 #define YELLOW_LED_PIN 5
 #define SWITCH_PIN 7
@@ -44,6 +46,8 @@ float getPhase();
 float signalWave();
 void sendSignal();
 float triangleWave();
+float triangleWave2();
+float triangleWave3();
 
 boolean newData = false;
 
@@ -113,6 +117,12 @@ void loop() {
         sendSignal();
     }
     else if (signalMode == TRIANGLE) {
+        sendSignal();
+    }
+    else if (signalMode == TRIANGLE2) {
+        sendSignal();
+    }
+    else if (signalMode == TRIANGLE3) {
         sendSignal();
     }
 }
@@ -262,6 +272,46 @@ void sendDACCommands(){
                 digitalWrite(YELLOW_LED_PIN, LOW);
             }
             break;
+        case 'y':
+            signalMode = TRIANGLE2;
+            period_ms = long(integer0FromPC * integer1FromPC);
+            sig_amplitude = int(integer2FromPC);
+            sig_offset = int(integer3FromPC);
+            Serial.println("Signal generator triangle");
+            Serial.print("Period (ms = )");
+            Serial.println(period_ms);
+            Serial.print("Signal amplitude = ");
+            Serial.println(sig_amplitude);
+            Serial.print("Signal offset = ");
+            Serial.println(sig_offset);
+            Serial.println(0);
+
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(100);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
+            break;
+        case 'u':
+            signalMode = TRIANGLE3;
+            period_ms = long(integer0FromPC * integer1FromPC);
+            sig_amplitude = int(integer2FromPC);
+            sig_offset = int(integer3FromPC);
+            Serial.println("Signal generator triangle");
+            Serial.print("Period (ms = )");
+            Serial.println(period_ms);
+            Serial.print("Signal amplitude = ");
+            Serial.println(sig_amplitude);
+            Serial.print("Signal offset = ");
+            Serial.println(sig_offset);
+            Serial.println(0);
+
+            if (verbose == true) {
+                digitalWrite(YELLOW_LED_PIN, HIGH);
+                delay(100);
+                digitalWrite(YELLOW_LED_PIN, LOW);
+            }
+            break;
         case 'v':
             if (integer0FromPC == 0) {
                 verbose = false;
@@ -336,11 +386,29 @@ void sendSignal(){
     else if (signalMode == TRIANGLE) {
         myval = triangleWave();
     }
+    else if (signalMode == TRIANGLE2) {
+        myval = triangleWave();
+    }
+    else if (signalMode == TRIANGLE3) {
+        myval = triangleWave();
+    }
     Serial.print(millis());
     Serial.print("  ");
     Serial.println(myval);
     // mcp_dac.fastWrite(myval, myval, myval, myval);
-    mcp_dac.setChannelValue(MCP4728_CHANNEL_A, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    if (signalMode == TRIANGLE) {
+        mcp_dac.setChannelValue(MCP4728_CHANNEL_B, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    }
+    else if (signalMode == TRIANGLE2) {
+        mcp_dac.setChannelValue(MCP4728_CHANNEL_C, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    }
+    else if (signalMode == TRIANGLE3) {
+        mcp_dac.setChannelValue(MCP4728_CHANNEL_D, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    }
+    else {
+        mcp_dac.setChannelValue(MCP4728_CHANNEL_B, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
+    }
+    
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_B, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_C, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
     // mcp_dac.setChannelValue(MCP4728_CHANNEL_D, myval, MCP4728_VREF_INTERNAL, MCP4728_GAIN_2X);
