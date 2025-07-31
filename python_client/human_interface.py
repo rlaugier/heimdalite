@@ -71,7 +71,8 @@ class HumInt(object):
                 db_server=None,
                 opcuad=opcuad,
                 nb_beams=4,
-                non_motorized=0):
+                non_motorized=0,
+                offset = 8.0):
         # self.lamb_min = lam_range[0]
         # self.lamb_max = lam_range[-1]
         self.lam_mean = lam_mean
@@ -80,7 +81,7 @@ class HumInt(object):
         self.act_index = act_index
         self.non_motorized = non_motorized # Index of the non-mororized beam
         self.nb_beams = nb_beams
-        self.offset = np.ones(self.nb_beams)
+        self.offset = offset * np.ones(self.nb_beams)
         self.offset[self.non_motorized] = 0
         self.verbose = verbose
         self.ts = db_server
