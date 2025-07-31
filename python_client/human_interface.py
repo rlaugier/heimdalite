@@ -69,13 +69,15 @@ class HumInt(object):
                 rois_interest=np.arange(1,10),
                 verbose=False,
                 db_server=None,
-                opcuad=opcuad):
+                opcuad=opcuad,
+                nb_beams=4):
         # self.lamb_min = lam_range[0]
         # self.lamb_max = lam_range[-1]
         self.lam_mean = lam_mean
         self.pad = pad
         self.interf = interf
         self.act_index = act_index
+        self.nb_beams = nb_beams
         self.verbose = verbose
         self.ts = db_server
         self.rois = [f"roi{n}_sum" for n in rois_interest]
@@ -181,15 +183,18 @@ class HumInt(object):
 
     def move(self, position ):
         # print(f"moving to {position:.3e}")
-        values = position
+        values = self.four2three(position)
         self.interf.send(any_values=values)
-        
+
     def get_position(self):
         pos = self.interf.values.copy()
         return pos
 
-    def do_scan(self, start=-3.0, end=3.0, nsteps=1000):
+    def do_scan(self, beam_index, start=-3.0, end=3.0, nsteps=1000):
         steps = np.linspace(start, end, nsteps)
+        mask = np.zeros(self.nb_beams)
+        mask[beam_index] = 1
+        step_full = steps[:,None] * mask[None,:]
         print("Starting a scan")
         results = []
         for n, astep in enumerate(tqdm(steps)):
@@ -198,12 +203,11 @@ class HumInt(object):
         results = np.array(results)
         print("Scan ended")
         return steps, results
-        
+
     def relative_move(self, motion):
         thepos = self.get_position()
         thepos[self.act_index] += motion 
         self.interf.send(any_values=thepos)
-        
 
     def evaluate_lag(self, act_index, n=10, lag_min=0.05, lag_max=0.15, amplitude=0.5, roi_index=3):
         start_pos = self.get_position()
@@ -271,11 +275,11 @@ class HumInt(object):
 
 
         initial_position = self.get_position()
-        for aprobe in full_hadamard:
+        for aprobe in piston_probe:
             # Move_and_sample
-            a = self.move_and_sample(full_hadamard, dt=0.5, move_back=False)
+            a = self.move_and_sample(aprobe, dt=0.5, move_back=False)
             # append
             measurements.append(a)
         self.move(initial_position)
-        return measurements
+        return measurements, probe_series
 
