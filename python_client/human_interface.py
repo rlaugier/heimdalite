@@ -81,7 +81,7 @@ class HumInt(object):
         self.rois = [f"roi{n}_sum" for n in rois_interest]
         self.dark = None
         self.bg_noise = None
-        self.non_motorized = 3 # Index of the non-mororized beam
+        self.non_motorized = 0 # Index of the non-mororized beam
         self.opcua_conn = OPCUAConnection(opcuad)
         self.opcua_conn.connect()
         self.shutters = [
@@ -269,9 +269,13 @@ class HumInt(object):
         for ashutter in self.shutters:
             ashutter.open()
 
+
+        initial_position = self.get_position()
         for aprobe in full_hadamard:
             # Move_and_sample
+            a = self.move_and_sample(full_hadamard, dt=0.5, move_back=False)
             # append
-            pass
+            measurements.append(a)
+        self.move(initial_position)
         return measurements
 
