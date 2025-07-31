@@ -277,7 +277,8 @@ class HumInt(object):
                         beam_state[i] = False
             print(beam_state)
             sleep(self.pad)
-            measurements.append(self.sample_long_cal(dt=dt))
+            a = self.sample_long_cal(dt=dt)
+            measurements.append(a.mean(axis=0))
         for ashutter in self.shutters:
             ashutter.open()
 
@@ -287,8 +288,11 @@ class HumInt(object):
             # Move_and_sample
             a = self.move_and_sample(aprobe, dt=dt, move_back=False)
             # append
-            measurements.append(a)
+            measurements.append(a.mean(axis=0))
         self.move(initial_position)
         measurements = np.array(measurements)
         return measurements, probe_series
+
+
+# TODO: adjust the calibration strategy and long integration strategy for when we miss frames
 
