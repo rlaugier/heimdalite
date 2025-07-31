@@ -285,9 +285,10 @@ class HumInt(object):
         initial_position = self.get_position()
         for aprobe in piston_probe:
             # Move_and_sample
-            a = self.move_and_sample(aprobe, dt=0.5, move_back=False)
+            a = self.move_and_sample(aprobe, dt=dt, move_back=False)
             # append
             measurements.append(a)
         self.move(initial_position)
+        measurements = np.array(measurements)
         return measurements, probe_series
 
