@@ -238,10 +238,10 @@ class HumInt(object):
         import dnull as dn
         import jax.numpy as jp
         ntel = 4
-        full_hadamard = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps)
-        shutter_probe = dn.dnull.shutter_probe(ntel)
+        shutter_probe, piston_probe = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps)
+        # shutter_probe = dn.dnull.shutter_probe(ntel)
         shutter_phasor = jp.ones_like(self.lambs)[None,:,None] * shutter_probe[:,None,:]
-        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * full_hadamard[:,None,:])
+        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * piston_probe[:,None,:])
         probe_series = jp.concatenate((shutter_phasor, hadamard_phasor), axis=0)
 
         print("shutter_calibration")
