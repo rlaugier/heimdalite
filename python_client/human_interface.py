@@ -70,13 +70,15 @@ class HumInt(object):
                 verbose=False,
                 db_server=None,
                 opcuad=opcuad,
-                nb_beams=4):
+                nb_beams=4,
+                non_motorized=0):
         # self.lamb_min = lam_range[0]
         # self.lamb_max = lam_range[-1]
         self.lam_mean = lam_mean
         self.pad = pad
         self.interf = interf
         self.act_index = act_index
+        self.non_motorized = non_motorized # Index of the non-mororized beam
         self.nb_beams = nb_beams
         self.offset = np.ones(self.nb_beams)
         self.offset[self.non_motorized] = 0
@@ -85,7 +87,6 @@ class HumInt(object):
         self.rois = [f"roi{n}_sum" for n in rois_interest]
         self.dark = None
         self.bg_noise = None
-        self.non_motorized = 0 # Index of the non-mororized beam
         self.opcua_conn = OPCUAConnection(opcuad)
         self.opcua_conn.connect()
         self.shutters = [
