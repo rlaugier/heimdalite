@@ -78,6 +78,8 @@ class HumInt(object):
         self.interf = interf
         self.act_index = act_index
         self.nb_beams = nb_beams
+        self.offset = np.ones(self.nb_beams)
+        self.offset[self.non_motorized] = 0
         self.verbose = verbose
         self.ts = db_server
         self.rois = [f"roi{n}_sum" for n in rois_interest]
@@ -92,6 +94,9 @@ class HumInt(object):
                 f"Shutter {shutterid+1}")\
                     for shutterid in range(4)
         ]
+
+        self.move(np.array([0., 0., 0., 0.]))
+
     def __del__(self):
         self.opcua_conn.disconnect()
 
@@ -183,11 +188,12 @@ class HumInt(object):
 
     def move(self, position ):
         # print(f"moving to {position:.3e}")
-        values = self.four2three(position)
+        values = self.four2three(position) + self.offset
         self.interf.send(any_values=values)
 
     def get_position(self):
         pos = self.interf.values.copy()
+        pos -= self.offset
         return pos
 
     def do_scan(self, beam_index, start=-3.0, end=3.0, nsteps=1000):
