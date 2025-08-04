@@ -269,9 +269,14 @@ class HumInt(object):
         probe_series = jp.concatenate((shutter_phasor, hadamard_phasor), axis=0)
         test_conditions["probe_series"] = probe_series
 
+        if dt is None:
+            test_sample = self.sample_long_cal(1.0)
+            rms = np.std(test_sample, axis=0)
+
         print("shutter_calibration")
         print("Assuming all start open")
         measurements = []
+        stds = []
         beam_state = np.ones(ntel, dtype=bool)
         for aprobe in shutter_probe.astype(bool):
             print("aprobe:", aprobe, "beam_state", beam_state)
@@ -292,9 +297,14 @@ class HumInt(object):
             sleep(self.pad)
             a = self.sample_long_cal(dt=dt)
             measurements.append(a.mean(axis=0))
+            if dt is not None:
+                stds.append(a.std(axis=0)/np.sqrt(a.shape[0]))
+            else:
+                stds.append(rms)
         for ashutter in self.shutters:
             ashutter.open()
-
+        print("Sleeping to avoid shutter vibrations")
+        sleep(2.0)
 
         initial_position = self.get_position()
         for aprobe in piston_probe:
@@ -304,7 +314,8 @@ class HumInt(object):
             measurements.append(a.mean(axis=0))
         self.move(initial_position)
         measurements = np.array(measurements)
-        return measurements, test_conditions
+        stds = np.array(stds)
+        return measurements, stds, test_conditions
 
 
 # TODO: adjust the calibration strategy and long integration strategy for when we miss frames
