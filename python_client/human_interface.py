@@ -246,15 +246,24 @@ class HumInt(object):
         plt.ylabel("Amplitude of light variation")
         plt.show()
 
-    def chip_calib(self, amp, steps=10, dt=0.5):
+    def chip_calib(self, amp, steps=10, dt=0.5,
+                    dn_object=None):
         import dnull as dn
         import jax.numpy as jp
+        test_conditions = {
+            "co2_ppm": 1e6,
+            "temp": 25.0,
+            "rhum": 0.3,
+            "pres": 1e3,
+            "co2" : 450,
+        }
         ntel = 4
         shutter_probe, piston_probe = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps)
         # shutter_probe = dn.dnull.shutter_probe(ntel)
         shutter_phasor = jp.ones_like(self.lambs)[None,:,None] * shutter_probe[:,None,:]
         hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * piston_probe[:,None,:])
         probe_series = jp.concatenate((shutter_phasor, hadamard_phasor), axis=0)
+        test_conditions["probe_series"] = probe_series
 
         print("shutter_calibration")
         print("Assuming all start open")
@@ -291,7 +300,7 @@ class HumInt(object):
             measurements.append(a.mean(axis=0))
         self.move(initial_position)
         measurements = np.array(measurements)
-        return measurements, probe_series
+        return measurements, test_conditions
 
 
 # TODO: adjust the calibration strategy and long integration strategy for when we miss frames
