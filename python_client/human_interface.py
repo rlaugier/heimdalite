@@ -198,17 +198,21 @@ class HumInt(object):
         pos -= self.offset
         return pos
 
-    def do_scan(self, beam_index, start=-3.0, end=3.0, nsteps=1000):
-        steps = np.linspace(start, end, nsteps)
+    def do_scan(self, beam_index, start=-3.0, end=3.0, nsteps=1000, dt=0.1):
+        step_vals = np.linspace(start, end, nsteps)
+        starting_pos = self.get_position()
+        steps = starting_pos[None,:] * np.ones_like(step_vals)[:,None]
+        steps[:,beam_index] = step_vals
         mask = np.zeros(self.nb_beams)
         mask[beam_index] = 1
         step_full = steps[:,None] * mask[None,:]
         print("Starting a scan")
         results = []
         for n, astep in enumerate(tqdm(steps)):
-            ares = self.move_and_sample(astep, move_back=False)
-            results.append(ares)
+            ares = self.move_and_sample(astep, move_back=False, dt=dt)
+            results.append(np.mean(ares, axis=0))
         results = np.array(results)
+        self.move(starting_pos)
         print("Scan ended")
         return steps, results
 
