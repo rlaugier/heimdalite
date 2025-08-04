@@ -206,15 +206,24 @@ class HumInt(object):
         mask = np.zeros(self.nb_beams)
         mask[beam_index] = 1
         step_full = steps[:,None] * mask[None,:]
+        if dt is None:
+            test_sample = self.sample_long_cal(1.0)
+            rms = np.std(test_sample, axis=0)
         print("Starting a scan")
         results = []
+        stds = []
         for n, astep in enumerate(tqdm(steps)):
             ares = self.move_and_sample(astep, move_back=False, dt=dt)
             results.append(np.mean(ares, axis=0))
+            if dt is not None:
+                stds.append(np.std(ares, axis=0) / np.sqrt(ares.shape[0]))
+            else:
+                stds.append(rms)
         results = np.array(results)
+        stds = np.array(stds)
         self.move(starting_pos)
         print("Scan ended")
-        return steps, results
+        return steps, results, stds
 
     def relative_move(self, motion):
         thepos = self.get_position()
@@ -249,6 +258,15 @@ class HumInt(object):
         plt.xlabel("Lag [s]")
         plt.ylabel("Amplitude of light variation")
         plt.show()
+
+    def shutter_set(self, values):
+        for i, ashutter in enumerate(self.shutters):
+            values_bool = values.astype(bool)
+            if values_bool[i]:
+                ashutter.open()
+            else:
+                ashutter.close()
+        sleep(self.pad)
 
     def chip_calib(self, amp, steps=10, dt=0.5,
                     dn_object=None):
