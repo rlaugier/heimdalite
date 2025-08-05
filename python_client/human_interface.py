@@ -102,6 +102,37 @@ class HumInt(object):
     def __del__(self):
         self.opcua_conn.disconnect()
 
+    def modulate_piezo(self, beam_index=None, beam=None, parameters=None):
+        default_params = np.array([100,50,1900,2000])
+        if isinstance(parameters, str):
+            if parameters == "?":
+                print(f"Parameters for a triangle wave (all integers):")
+                print(f"1. Period multiplier")
+                print(f"2. Period multiplier")
+                print(f"3. a : half-amplitude (result will be 2a peak-to-peak)")
+                print(f"4. offset : Raw value 0-4000")
+                return default_params
+        elif parameters is None:
+            parameters = default_params
+        elif isinstance(parameters, np.array):
+            pass
+        else:
+            raise KeyError("Make a valide parameter array")
+        beam_index2letter = {
+            1:"t",
+            2:"y",
+            3:"u"
+        }
+        beam2letter = {
+            2:"t",
+            3:"y",
+            4:"u"
+            
+        }
+        if beam_index is not None:
+            self.interf.ser.write(self.interf.vals2bytes(beam_index2letter[beam_index], parameters))
+
+
     def find_dark(self, frac=0.25, dt=0.5, gain=0.1,
                  roi_index=3, verbose=True,
                  amp=800.0):
@@ -285,6 +316,12 @@ class HumInt(object):
         shutter_phasor = jp.ones_like(self.lambs)[None,:,None] * shutter_probe[:,None,:]
         hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * piston_probe[:,None,:])
         probe_series = jp.concatenate((shutter_phasor, hadamard_phasor), axis=0)
+        amplitude_full = np.ones((shutter_probe.shape[0] + piston_probe.shape[0], shutter_probe.shape[1]))
+        amplitude_full[:shutter_probe.shape[0], :] *= shutter_probe
+        piston_full = np.ones_like(amplitude_full)
+        piston_full[-piston_probe.shape[0]:, :] = piston_probe
+        test_conditions["amplitude_full"] = amplitude_full
+        test_conditions["piston_full"] = piston_full
         test_conditions["probe_series"] = probe_series
 
         if dt is None:
