@@ -114,7 +114,7 @@ class HumInt(object):
                 return default_params
         elif parameters is None:
             parameters = default_params
-        elif isinstance(parameters, np.array):
+        elif isinstance(parameters, np.ndarray):
             pass
         else:
             raise KeyError("Make a valide parameter array")
@@ -300,7 +300,7 @@ class HumInt(object):
         sleep(self.pad)
 
     def chip_calib(self, amp, steps=10, dt=0.5,
-                    dn_object=None):
+                    dn_object=None, bidir=True):
         import dnull as dn
         import jax.numpy as jp
         test_conditions = {
@@ -311,10 +311,10 @@ class HumInt(object):
             "co2" : 450,
         }
         ntel = 4
-        shutter_probe, piston_probe = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps)
+        shutter_probe, piston_probe = dn.dnull.full_hadamard_probe(ntel, amp, steps=steps, bidir=True)
         # shutter_probe = dn.dnull.shutter_probe(ntel)
         shutter_phasor = jp.ones_like(self.lambs)[None,:,None] * shutter_probe[:,None,:]
-        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * piston_probe[:,None,:])
+        hadamard_phasor = jp.exp(1j*2*np.pi/self.lambs[None,:,None] * 1e-6*piston_probe[:,None,:])
         probe_series = jp.concatenate((shutter_phasor, hadamard_phasor), axis=0)
         amplitude_full = np.ones((shutter_probe.shape[0] + piston_probe.shape[0], shutter_probe.shape[1]))
         amplitude_full[:shutter_probe.shape[0], :] *= shutter_probe
@@ -349,7 +349,7 @@ class HumInt(object):
                         self.shutters[beam_id].close()
                         beam_state[i] = False
             print(beam_state)
-            sleep(self.pad)
+            sleep(3 * self.pad)
             a = self.sample_long_cal(dt=dt)
             measurements.append(a.mean(axis=0))
             if dt is not None:
@@ -367,6 +367,10 @@ class HumInt(object):
             a = self.move_and_sample(aprobe, dt=dt, move_back=False)
             # append
             measurements.append(a.mean(axis=0))
+            if dt is not None:
+                stds.append(a.std(axis=0)/np.sqrt(a.shape[0]))
+            else:
+                stds.append(rms)
         self.move(initial_position)
         measurements = np.array(measurements)
         stds = np.array(stds)
