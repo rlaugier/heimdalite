@@ -17,6 +17,6 @@ setup(name="heimdalite",
     packages=["heimdalite"],
     install_requires=[
             "numpy", "scipy", "matplotlib", "configparser", "tqdm", "jax", "dnull",
-            "pyserial", "threading"
-    ],
+            "pyserial"
+            ],
     zip_safe=False)
