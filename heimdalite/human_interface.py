@@ -73,6 +73,22 @@ class HumInt(object):
                 nb_beams=4,
                 non_motorized=0,
                 offset = 8.0):
+        """
+
+        Args:
+            lam_mean    : Mean wavelenght[m]
+            pad         : Delay of actuation [s]
+            interf      : pypiezo object
+            act_index   : deprecated
+            rois_interest : [array of int] indices of rois
+            verbosoe    :
+            db_server   : redis client instance
+            opcuad      : opcua client instnace
+            nb_beams    : (int) number of beams
+            non_motorized : The index of the beam which is not
+                            motorized
+            offset      : Offset [µm] to center the travel
+        """
         # self.lamb_min = lam_range[0]
         # self.lamb_max = lam_range[-1]
         self.lam_mean = lam_mean
@@ -234,9 +250,6 @@ class HumInt(object):
         starting_pos = self.get_position()
         steps = starting_pos[None,:] * np.ones_like(step_vals)[:,None]
         steps[:,beam_index] = step_vals
-        mask = np.zeros(self.nb_beams)
-        mask[beam_index] = 1
-        step_full = steps[:,None] * mask[None,:]
         if dt is None:
             test_sample = self.sample_long_cal(1.0)
             rms = np.std(test_sample, axis=0)
