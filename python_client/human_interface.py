@@ -299,6 +299,177 @@ class HumInt(object):
                 ashutter.close()
         sleep(self.pad)
 
+    def chip_calib_pairwise(self, amp, steps=10, dt=0.5,
+                    offset_scan=0., saveto="/dev/shm/cal_raw.fits",
+                    overwrite=True,
+                    dn_object=None, bidir=True, verbose=False):
+        import dnull as dn
+        if saveto is not None:
+            prefix = "HIERARCH NOTT "
+            import astropy.io.fits as fits
+            hdulist = fits.HDUList()
+            myheader = fits.Header([(prefix+"co2_ppm", 1e6),
+                                 (prefix+"temp", 25.0),
+                                 (prefix+"rhum", 0.3),
+                                 (prefix+"pres", 1e3),
+                                 (prefix+"co2" , 450)])
+            hdulist.append(fits.PrimaryHDU(header=myheader))
+        test_conditions = {
+            "co2_ppm": 1e6,
+            "temp": 25.0,
+            "rhum": 0.3,
+            "pres": 1e3,
+            "co2" : 450,
+        }
+        ntel = 4
+        print("Kappa matrix")
+        shutter_probe = dn.dnull.shutter_probe(ntel)
+        shutter_state = np.abs(shutter_probe[0]).astype(bool)
+        self.shutter_set(shutter_state)
+        #m = self.get_dark(dt)   #Darks are defined at the beginning (to check)
+
+        if dt is None:
+            test_sample = self.sample_long_cal(1.0)
+            rms = np.std(test_sample, axis=0)
+
+        kappa = []
+        std_kappa = []
+        for beam in shutter_probe:
+            shutter_state = np.abs(beam).astype(bool)
+            self.shutter_set(shutter_state)
+            a = self.sample_long_cal(dt=dt)
+            kappa.append(a.mean(axis=0))
+            std_kappa.append(a.std(axis=0)/np.sqrt(a.shape[0]))
+        kappa = np.array(kappa)
+        std_kappa = np.array(std_kappa)
+    
+        sleep(2.0)
+    
+        #Compute the element of the kappa matrix
+        kappa_new = []
+        for kappa_line in kappa[1:]:
+            kappa_new.append(kappa_line-kappa[0])  #Background correction
+        kappa_new = np.array(kappa_new)
+        kappa_new = kappa_new[:,:-1]   #Removes the background ROI values
+        for i in range(len(kappa_new)):
+            kappa_new[i] = kappa_new[i]/np.sum(kappa_new[i])  #Normalize the column of the matrix with the sum
+            for j in range(len(kappa_new[i])): 
+                if kappa_new[i,j] < 1e-2:
+                    kappa_new[i,j] = 0
+        kappa_old = np.copy(kappa)
+        kappa = np.copy(kappa_new)
+        print("Transfer matrix")   
+    
+        A = np.array([[1,-1,0,0],
+                      [1,0,-1,0],
+                      [1,0,0,-1],
+                      [0,1,-1,0],
+                      [0,1,0,-1],
+                      [0,0,1,-1]])
+        stepseries = offset_scan + np.linspace(-amp, amp, steps)
+        f0 = 0.5/self.lam_mean * 1e-6
+        test_conditions["A"] = A
+        test_conditions["stepseries"] = stepseries
+        all_fringes = []
+        all_fringes_std = []
+        for amode in A:
+            shutter_state= np.abs(amode).astype(bool)
+            self.shutter_set(shutter_state)
+            sleep(10 * self.pad)
+            mysequence = amode[None,:] * stepseries[:,None]
+            fringes, fringes_std = [], []
+            print("Scan of baseline: ",amode)
+            for apos in mysequence:
+                a = self.move_and_sample(apos, dt=dt, move_back=False)
+                fringes.append(a.mean(axis=0))
+                if dt is not None:
+                    fringes_std.append(a.std(axis=0)/np.sqrt(a.shape[0]))
+                else:
+                    fringes_std.append(rms)
+            fringes_std = np.array(fringes_std)
+            fringes = np.array(fringes)
+            all_fringes.append(fringes)
+            all_fringes_std.append(fringes_std)
+            relsteps = 2*stepseries
+            phases = 2*np.pi/(self.lam_mean*1e6) * relsteps
+        all_fringes = np.array(all_fringes)
+        all_fringes_std = np.array(all_fringes_std)
+        self.move(np.array([0., 0., 0., 0.]))
+        self.shutter_set(np.ones(4).astype(bool))
+
+        if saveto is not None:
+            hdulist.append(fits.hdu.ImageHDU(data=kappa.T, name="KAPPA", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=std_kappa, name="KAPPAE", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=A, name="A", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=all_fringes[:,:,:-1], name="FRINGES", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=all_fringes_std[:,:,:-1], name="FRINGESE", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=all_fringes[:,:,-1], name="BG", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=all_fringes_std[:,:,-1], name="BGE", header=None))
+            # hdulist.append(fits.hdu.ImageHDU(data=PHI_dft, name="PHI", header=None))
+            hdulist.append(fits.hdu.ImageHDU(data=phases, name="PHASES", header=None))
+            hdulist.writeto(saveto, overwrite=overwrite)
+        return kappa, A, test_conditions
+
+    def process_calib_pairwise(self, datafile="/dev/shm/cal_raw.fits",
+                               saveto="/dev/shm/constructed_catm.nifits",
+                               overwrite=True,
+                              verbose=False, ):
+        import astropy.io.fits as fits
+        prefix = "HIERARCH NOTT "
+        hdul = fits.open(datafile)
+        phases = hdul["PHASES"].data
+        fringes = hdul["FRINGES"].data
+        A = hdul["A"].data
+        kappa = hdul["KAPPA"].data
+        PHI = []
+        for i, amode in enumerate(A):
+            sleep(10 * self.pad)
+            print("Scan of baseline: ",amode)
+            dft_phasor = np.exp(1j * phases)
+            dft = dft_phasor.dot(fringes[i] - fringes[i].mean(axis=0))
+            if verbose:
+                plt.figure()
+                plt.plot(phases, fringes[i,:,3], color="C0")
+                plt.plot(phases, fringes[i,:,4], color="C1")
+                ax2 = plt.gca().twinx()
+                ax2.plot(phases, np.abs(dft[3])*dft_phasor.real, color="k", linestyle=":")
+                ax2.plot(phases, np.real(dft[3] * np.conj(dft_phasor)), color="C0", linestyle="--")
+                ax2.axvline(np.angle(dft[3]), color="C0")
+                ax2.plot(phases, np.real(dft[4] * np.conj(dft_phasor)), color="C1", linestyle="--")
+                ax2.axvline(np.angle(dft[4]), color="C1")
+                for ks in np.arange(-1,2):
+                    plt.axvline(np.pi * ks, color="k", linewidth=0.5)
+                plt.title(f"""amp = {np.abs(dft[3]):.2f}, phase = {np.angle(dft[3]):.2f}
+                            amp = {np.abs(dft[4]):.2f}, phase = {np.angle(dft[4]):.2f}""")
+                plt.show()
+            PHI.append(np.angle(dft))
+        PHI = np.array(PHI)
+        print("PHI ", PHI.shape)
+        A2 = A[:3,:]
+        Ap = np.linalg.pinv(A2)
+        phi = (Ap.dot(-PHI[:3,:])).T
+        print("phi ", phi.shape)
+        phi = phi - phi[:,0][:,None]
+        print("phi ", phi.shape)
+        phi_all = np.zeros_like(kappa)
+    
+        print("phi_all ", phi_all.shape)
+        phi_all[3:5,:] = phi[3:5,:]
+        phi_all[2,1] = PHI[0,2]
+        phi_all[5,2] = 0 # This is debatable
+        phi_all[5,3] = PHI[-1,5] - phi_all[5,2]
+
+        M = np.sqrt(kappa)*np.exp(1j*phi_all)
+        if verbose:
+            from kernuller.diagrams import plot_outputs_smart as kplot
+            kplot(M)
+        if saveto is not None:
+            from nifits.io import oifits as io
+            ni_catm = io.NI_CATM(data_array=M)
+            mynifit = io.nifits(header=hdul[0].header,
+                                ni_catm=ni_catm)
+        return M
+
     def chip_calib(self, amp, steps=10, dt=0.5,
                     dn_object=None, bidir=True):
         import dnull as dn
