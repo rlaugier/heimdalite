@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from time import sleep, time
+from astropy.time import Time
 from tqdm import tqdm
 from copy import copy
 
@@ -212,17 +213,25 @@ class HumInt(object):
         aresp = self.ts.ts.get(self.rois[0])
         return aresp[0]
 
-    def sample_long(self, dt=1.0):
+    def sample_long(self, dt=1.0, t=False):
         # start = int(np.round(time()*1000).astype(int))
         start = self.db_time()
         sleep(dt)
         # end = int(np.round(time()*1000).astype(int))
         end = self.db_time()
         mes = np.array([self.ts.ts.range(akey, start, end) for akey in self.rois])
-        return mes.T[1]
+        if t:
+            return mes.T
+        else :
+            return mes.T[1]
 
-    def sample_long_cal(self, dt):
-        return self.sample_long(dt=dt) - self.dark
+    def sample_long_cal(self, dt, t=False):
+        full = self.sample_long(dt=dt, t=t)
+        if t:
+            return full[1] - self.dark, full[0]
+        else:
+            # The timestamp was not passed
+            return full - self.dark
 
     def four2three(self, position):
         return position - position[self.non_motorized]
@@ -304,6 +313,23 @@ class HumInt(object):
                 ashutter.close()
         sleep(self.pad)
 
+    def record_data(self, refnifits=None, destnifits=None, dt=0.5, n=1):
+        timet = Time.now().isot
+        db0 = self.db_time()
+        if destnifits is None:
+            destnifits = "/data/bench_data/record" + timet
+        import astropy.io.fits as fits
+        from nifits.io import oifits as io
+        prefix = "HIERARCH NOTT "
+        myheader = fits.Header([("DATE-OBS", timet),
+                             (prefix+"co2_ppm", 1e6),
+                             (prefix+"temp", 25.0),
+                             (prefix+"rhum", 0.3),
+                             (prefix+"pres", 1e3),
+                             (prefix+"co2" , 450)])
+        myref = io.nifits.from_nifits(refnifits)
+        
+
     def chip_calib_pairwise(self, amp, steps=10, dt=0.5,
                     offset_scan=0., saveto="/dev/shm/cal_raw.fits",
                     overwrite=True,
@@ -312,8 +338,12 @@ class HumInt(object):
         if saveto is not None:
             prefix = "HIERARCH NOTT "
             import astropy.io.fits as fits
+            from astropy.time import Time
             hdulist = fits.HDUList()
-            myheader = fits.Header([(prefix+"co2_ppm", 1e6),
+            timet = Time.now().isot
+            db0 = self.db_time()
+            myheader = fits.Header([("DATE-OBS", timet),
+                                 (prefix+"co2_ppm", 1e6),
                                  (prefix+"temp", 25.0),
                                  (prefix+"rhum", 0.3),
                                  (prefix+"pres", 1e3),
@@ -451,15 +481,25 @@ class HumInt(object):
         PHI = np.array(PHI)
         print("PHI ", PHI.shape)
         A2 = A[:3,:]
+        print("A2")
+        print(A2)
         Ap = np.linalg.pinv(A2)
+        print("Ap")
+        print(Ap)
+        print("PHI crop")
+        print(PHI[:3,3:5])
+        print("PHI_01_bright")
+        print(PHI[0,2])
         phi = (Ap.dot(-PHI[:3,:])).T
         print("phi ", phi.shape)
         phi = phi - phi[:,0][:,None]
+        phi_alt = np.hstack((np.zeros(2)[:,None], PHI[:3,3:5].T))
         print("phi ", phi.shape)
+        print("phi_alt", phi_alt.shape)
         phi_all = np.zeros_like(kappa)
     
         print("phi_all ", phi_all.shape)
-        phi_all[3:5,:] = phi[3:5,:]
+        phi_all[3:5,:] = phi_alt# phi[3:5,:]
         phi_all[2,1] = PHI[0,2]
         phi_all[5,2] = 0 # This is debatable
         phi_all[5,3] = PHI[-1,5] - phi_all[5,2]
@@ -473,6 +513,11 @@ class HumInt(object):
             ni_catm = io.NI_CATM(data_array=M)
             mynifit = io.nifits(header=hdul[0].header,
                                 ni_catm=ni_catm)
+            mynifit.to_nifits(filename=saveto,
+                    static_only=False,
+                  writefile=True,
+                 overwrite=overwrite)
+
         return M
 
     def chip_calib(self, amp, steps=10, dt=0.5,
